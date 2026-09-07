@@ -9,6 +9,14 @@ from .phase_change import (
     get_saturation_state,
     pure_phase_enthalpy_j_kg,
 )
+from .flash import (
+    FlashResult,
+    wilson_k_values,
+    solve_rachford_rice,
+    flash_isothermal,
+)
+from .phase_envelope import temperature_flash_sweep
+from .two_phase_path import build_phase_path
 
 __all__ = [
     "COMPONENTS",
@@ -25,4 +33,10 @@ __all__ = [
     "saturation_temperature_c",
     "get_saturation_state",
     "pure_phase_enthalpy_j_kg",
+    "FlashResult",
+    "wilson_k_values",
+    "solve_rachford_rice",
+    "flash_isothermal",
+    "temperature_flash_sweep",
+    "build_phase_path",
 ]
