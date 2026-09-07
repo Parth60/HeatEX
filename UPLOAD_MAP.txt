@@ -1,0 +1,32 @@
+UPLOAD THESE FILES INTO THE SAME RELATIVE PATHS:
+
+ROOT:
+  requirements.txt
+  README.md
+  .gitignore
+
+.streamlit/
+  config.toml
+
+backend/app/engine/
+  __init__.py
+  bell_delaware.py
+  correlations.py
+  geometry.py
+  heat_transfer.py
+  pressure_drop.py
+  tube_side.py
+
+backend/app/visualization/
+  __init__.py
+  cross_section.py
+  flow_paths.py
+  tema_svg.py
+  tube_bundle.py
+
+backend/tests/
+  test_engine_v02.py
+
+IMPORTANT:
+Do NOT put these files all at the root.
+Keep the exact folder structure above.

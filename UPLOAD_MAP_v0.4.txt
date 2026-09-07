@@ -1,0 +1,27 @@
+HX//RACE v0.4 — OPTIMISER BATCH
+
+REPLACE:
+  app.py
+  backend/app/engine/optimizer.py
+
+ADD:
+  backend/app/visualization/leaderboard.py
+  backend/tests/test_optimizer_v04.py
+  docs/OPTIMISER_v0.4.md
+
+KEEP EVERYTHING FROM v0.2 AND v0.3.
+
+Suggested GitHub commit:
+  Add v0.4 multi-objective exchanger optimiser and P1 leaderboard
+
+WHAT YOU GET:
+  - bounded geometry search
+  - P1 / P2 / P3 ranking
+  - feasibility filtering
+  - area-margin constraints
+  - tube and shell ΔP constraints
+  - tube velocity constraints
+  - six optimisation objectives
+  - leaderboard CSV export
+  - optimiser JSON export
+  - P1 animated exchanger visualization

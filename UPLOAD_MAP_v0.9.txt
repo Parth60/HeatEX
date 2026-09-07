@@ -1,0 +1,37 @@
+HX//RACE v0.9 — MULTI-EXCHANGER PLATFORM
+
+REPLACE:
+  app.py
+
+ADD TO backend/app/engine/:
+  single_phase_common.py
+  plate_hx.py
+  double_pipe_hx.py
+  air_cooled_hx.py
+  exchanger_selector.py
+
+ADD TO backend/app/visualization/:
+  other_exchangers.py
+
+ADD:
+  backend/tests/test_multi_exchanger_v09.py
+  docs/MULTI_EXCHANGER_v0.9.md
+
+KEEP EVERYTHING FROM v0.2-v0.8.
+
+SUGGESTED COMMIT:
+  Add v0.9 plate double pipe air cooled and exchanger selector
+
+NEW HX TYPES:
+  Plate & Frame
+  Double Pipe
+  Air-Cooled
+
+NEW SELECTOR:
+  ranks Shell & Tube / Plate & Frame / Double Pipe / Air-Cooled
+  using duty, pressure, viscosity, phase change, fouling,
+  close approach, cooling-water availability and compactness.
+
+ENGINEERING BOUNDARY:
+  v0.9 alternative-HX correlations are screening models.
+  Final plate and air-cooled designs require vendor-specific geometry/performance data.

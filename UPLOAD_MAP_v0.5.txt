@@ -1,0 +1,56 @@
+HX//RACE v0.5 — THERMODYNAMICS PRO
+
+REPLACE:
+  app.py
+  requirements.txt
+  backend/app/engine/simulator.py
+
+ADD:
+  backend/app/engine/temperature_profile.py
+
+CREATE FOLDER backend/app/thermo/ AND ADD:
+  __init__.py
+  components.py
+  composition.py
+  eos.py
+  activity.py
+  phase_equilibrium.py
+  engine.py
+
+ADD:
+  backend/tests/test_thermo_v05.py
+  docs/THERMODYNAMICS_v0.5.md
+  data/interaction_parameters.example.json
+
+KEEP ALL v0.2, v0.3 and v0.4 FILES, ESPECIALLY:
+  backend/app/engine/optimizer.py
+  backend/app/engine/bell_delaware.py
+  backend/app/visualization/*
+  backend/tests/test_optimizer_v04.py
+
+SUGGESTED COMMIT:
+  Add v0.5 multicomponent thermodynamics and enthalpy engine
+
+WHAT v0.5 DOES:
+  - pure or multicomponent streams
+  - mole-basis or mass-basis input
+  - automatic basis conversion and normalization
+  - enthalpy-based heat duty
+  - temperature-dependent properties
+  - PR cubic EOS
+  - SRK cubic EOS
+  - NRTL activity coefficients
+  - UNIQUAC activity coefficients
+  - JSON-driven interaction parameters
+  - bubble/dew/phase screening
+  - Z-factor diagnostics
+  - T–Q profile
+  - minimum approach temperature
+  - optimizer remains connected to the same simulator
+
+IMPORTANT:
+  NRTL/UNIQUAC/PR/SRK predictions require appropriate validated interaction
+  parameters for serious design work.
+
+  v0.5 does NOT yet claim rigorous phase-change design. If a phase boundary is
+  detected the program warns you. Condenser/reboiler/two-phase calculations are v0.6.

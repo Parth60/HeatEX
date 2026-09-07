@@ -1,0 +1,49 @@
+HX//RACE v0.7 — RIGOROUS FLASH + MULTICOMPONENT VLE
+
+REPLACE:
+  app.py
+  backend/app/thermo/__init__.py
+
+ADD TO backend/app/thermo/:
+  flash.py
+  phase_envelope.py
+  two_phase_path.py
+
+ADD TO backend/app/engine/:
+  flash_drum.py
+
+ADD TO backend/app/visualization/:
+  flash_vle.py
+
+ADD:
+  backend/tests/test_flash_v07.py
+  docs/FLASH_VLE_v0.7.md
+
+KEEP ALL FILES FROM v0.2-v0.6.
+
+SUGGESTED COMMIT:
+  Add v0.7 rigorous flash and multicomponent VLE engine
+
+WHAT v0.7 ADDS:
+  - Wilson K-value initialization
+  - Rachford-Rice vapour fraction
+  - liquid x_i
+  - vapour y_i
+  - K_i = y_i/x_i
+  - PR phi-phi flash iteration
+  - SRK phi-phi flash iteration
+  - NRTL gamma-Raoult flash
+  - UNIQUAC gamma-Raoult flash
+  - ideal Raoult flash
+  - flash drum molar split
+  - isobaric vapour-fraction temperature sweep
+  - approximate bubble/dew detection
+  - multicomponent cooling/condensation path
+  - multicomponent heating/boiling path
+  - flash/VLE visualisation
+  - JSON export
+
+ENGINEERING BOUNDARY:
+  NRTL/UNIQUAC v0.7 use ideal vapour fugacity.
+  The multicomponent phase path is a sequence of isothermal flashes.
+  It does not yet produce rigorous exchanger area or local two-phase heat transfer.

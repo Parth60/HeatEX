@@ -1,0 +1,49 @@
+HX//RACE v0.10 — MECHANICAL / TEMA DESIGN LAYER
+
+REPLACE:
+  app.py
+
+CREATE:
+  backend/app/mechanical/
+
+ADD:
+  backend/app/mechanical/__init__.py
+  backend/app/mechanical/materials.py
+  backend/app/mechanical/pressure_design.py
+  backend/app/mechanical/nozzles.py
+  backend/app/mechanical/tema_checks.py
+  backend/app/mechanical/mechanical_design.py
+
+ADD:
+  backend/app/visualization/mechanical_svg.py
+  backend/tests/test_mechanical_v010.py
+  docs/MECHANICAL_TEMA_v0.10.md
+
+KEEP EVERYTHING FROM v0.2-v0.9.
+
+SUGGESTED COMMIT:
+  Add v0.10 mechanical pressure design and TEMA screening layer
+
+NEW OUTPUTS:
+  shell allowable stress screening
+  tube allowable stress screening
+  required shell thickness
+  suggested shell nominal thickness
+  2:1 elliptical head thickness
+  shell MAWP screen
+  tube wall pressure screen
+  shell/tube differential design pressure
+  shell nozzle size
+  tube nozzle size
+  tube pitch check
+  baffle spacing check
+  baffle cut check
+  tube-pass check
+  rear-head thermal-expansion note
+
+IMPORTANT:
+  This is NOT ASME code certification.
+  This is NOT TEMA certification.
+  This is NOT a fabrication drawing.
+  Tubesheet/flange/nozzle reinforcement/external-pressure/fatigue/vibration
+  still require dedicated mechanical calculations.

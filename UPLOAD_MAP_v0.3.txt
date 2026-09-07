@@ -1,0 +1,36 @@
+HX//RACE v0.3 — STREAMLIT INTEGRATION BATCH
+
+REPLACE AT ROOT:
+  app.py
+
+ADD:
+  backend/__init__.py
+  backend/app/__init__.py
+
+ADD TO backend/app/engine/:
+  thermo_provider.py
+  simulator.py
+
+ADD TO backend/app/visualization/:
+  telemetry.py
+
+ADD TO backend/tests/:
+  test_simulator_v03.py
+
+DO NOT DELETE YOUR EXISTING v0.2 FILES:
+  geometry.py
+  tube_side.py
+  correlations.py
+  heat_transfer.py
+  pressure_drop.py
+  bell_delaware.py
+  tema_svg.py
+  cross_section.py
+  flow_paths.py
+  tube_bundle.py
+
+AFTER UPLOAD:
+  streamlit run app.py
+
+Suggested commit:
+  Connect v0.3 Streamlit cockpit to thermal hydraulic engine

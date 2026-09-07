@@ -1,0 +1,49 @@
+HX//RACE v0.6 — PHASE CHANGE PRO
+
+REPLACE:
+  app.py
+  backend/app/thermo/components.py
+  backend/app/thermo/__init__.py
+
+ADD:
+  backend/app/thermo/phase_change.py
+
+ADD TO backend/app/engine/:
+  two_phase.py
+  phase_change_simulator.py
+
+ADD TO backend/app/visualization/:
+  phase_zones.py
+
+ADD:
+  backend/tests/test_phase_change_v06.py
+  docs/PHASE_CHANGE_v0.6.md
+
+KEEP ALL FILES FROM v0.2-v0.5.
+
+SUGGESTED COMMIT:
+  Add v0.6 condenser reboiler and two phase zone engine
+
+WHAT v0.6 ADDS:
+  - pure-fluid condenser mode
+  - pure-fluid reboiler mode
+  - saturation temperature solving
+  - Watson latent heat fallback
+  - vapour sensible heat
+  - desuperheating zone
+  - condensation zone
+  - subcooling zone
+  - liquid preheating zone
+  - boiling zone
+  - vapour superheating zone
+  - Nusselt film-condensation screening h
+  - Cooper pool-boiling screening h
+  - Lockhart-Martinelli tube-side 2-phase ΔP screening
+  - zone-by-zone U, LMTD, duty and area
+  - dynamic phase-zone visualisation
+  - phase-change JSON export
+
+IMPORTANT ENGINEERING BOUNDARY:
+  v0.6 phase-change calculations are intended for pure-component screening.
+  Rigorous multicomponent condensation and boiling require flash/equilibrium
+  calculations and are NOT claimed by this batch.

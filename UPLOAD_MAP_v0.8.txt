@@ -1,0 +1,52 @@
+HX//RACE v0.8 — MULTICOMPONENT CONDENSER / REBOILER INTEGRATION
+
+REPLACE:
+  app.py
+  backend/app/thermo/__init__.py
+
+ADD TO backend/app/thermo/:
+  mixture_phase.py
+
+ADD TO backend/app/engine/:
+  two_phase_multicomponent.py
+  multicomponent_phase_hx.py
+
+ADD TO backend/app/visualization/:
+  multicomponent_hx.py
+
+ADD:
+  backend/tests/test_multicomponent_hx_v08.py
+  docs/MULTICOMPONENT_HX_v0.8.md
+
+KEEP EVERYTHING FROM v0.2-v0.7.
+
+SUGGESTED COMMIT:
+  Add v0.8 multicomponent condenser reboiler integration
+
+CORE v0.8 OUTPUTS PER SEGMENT:
+  beta
+  mass quality
+  x_i
+  y_i
+  mixture enthalpy
+  duty
+  process h
+  utility h
+  overall U
+  LMTD
+  required area
+  process delta-P contribution
+  utility delta-P contribution
+
+TOTALS:
+  total duty
+  total required area
+  area margin
+  process delta-P
+  utility delta-P
+  utility outlet temperature
+
+ENGINEERING BOUNDARY:
+  This is a coupled VLE / exchanger screening model.
+  Mixture latent enthalpy and two-phase transport remain approximate and
+  must be benchmarked before any design-release use.

@@ -1,0 +1,61 @@
+HX//RACE v0.11 - VALIDATION + PROFESSIONAL TECHNICAL PACK
+
+REPLACE:
+  app.py
+
+CREATE:
+  backend/app/validation/
+  backend/app/reporting/
+
+ADD:
+  backend/app/validation/__init__.py
+  backend/app/validation/validation_engine.py
+  backend/app/validation/benchmarks.py
+  backend/app/validation/trace.py
+  backend/app/validation/assumptions.py
+
+ADD:
+  backend/app/reporting/__init__.py
+  backend/app/reporting/engineering_report.py
+  backend/app/reporting/technical_pack.py
+
+ADD:
+  backend/app/visualization/validation_dashboard.py
+
+ADD:
+  backend/tests/test_validation_reporting_v011.py
+  docs/VALIDATION_REPORTING_v0.11.md
+
+KEEP EVERYTHING FROM v0.2-v0.10.
+
+SUGGESTED COMMIT:
+  Add v0.11 validation engine and professional engineering report
+
+NEW VALIDATION:
+  energy-balance closure
+  Q=UAFLMTD closure
+  installed-area identity
+  LMTD/F checks
+  Reynolds/Prandtl checks
+  Bell-Delaware correction-factor sanity
+  tube/shell dP constraints
+  tube velocity screening
+  area margin
+  phase-model suitability
+  mechanical-screening status
+
+NEW REPORT OUTPUTS:
+  professional engineering PDF
+  full JSON design archive
+  validation CSV
+  benchmark CSV
+  assumptions CSV
+  calculation trace CSV
+  TEMA-aligned preliminary specification CSV
+  full ZIP technical pack
+
+IMPORTANT WORDING:
+  NOT TEMA Certified
+  NOT ASME Certified
+  NOT ASME Stamped
+  NOT fabrication approved
