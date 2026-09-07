@@ -18,7 +18,7 @@ class ComponentData:
     pc_pa: Optional[float]
     acentric_factor: Optional[float]
 
-    # Screening liquid-property model referenced to 25 °C
+    # Liquid-property model referenced to 25 °C
     cp_ref_j_kgk: float
     cp_slope_j_kgk2: float
     rho_ref_kg_m3: float
@@ -28,7 +28,13 @@ class ComponentData:
     k_ref_w_mk: float
     k_slope_w_mk2: float
 
-    # UNIQUAC structural constants (screening database)
+    # Phase-change fallback data
+    normal_boiling_point_c: Optional[float] = None
+    latent_heat_nbp_j_kg: Optional[float] = None
+    vapour_cp_ref_j_kgk: Optional[float] = None
+    vapour_cp_slope_j_kgk2: float = 0.0
+
+    # UNIQUAC structural constants
     uniquac_r: Optional[float] = None
     uniquac_q: Optional[float] = None
 
@@ -40,26 +46,40 @@ class ComponentData:
         cp = self.cp_ref_j_kgk + self.cp_slope_j_kgk2 * (temperature_c - 25.0)
         return max(250.0, cp)
 
+    def vapour_cp_j_kgk(self, temperature_c: float) -> float:
+        if self.vapour_cp_ref_j_kgk is None:
+            return self.cp_j_kgk(temperature_c)
+
+        cp = (
+            self.vapour_cp_ref_j_kgk
+            + self.vapour_cp_slope_j_kgk2 * (temperature_c - 25.0)
+        )
+        return max(250.0, cp)
+
     def sensible_enthalpy_j_kg(
         self,
         temperature_c: float,
         reference_temperature_c: float = 25.0,
+        phase: str = "liquid",
     ) -> float:
         """
-        Integral of Cp = Cp_ref + slope*(T - 25 °C).
+        Integral of the screening Cp model.
 
-        This is a sensible-enthalpy screening model. It does not include latent
-        heat. Pure-fluid CoolProp mode can supply real enthalpy where available.
+        phase='vapour' uses the vapour Cp fallback when available.
         """
         t = temperature_c
         tr = reference_temperature_c
 
-        # Integral of cp_ref + slope*(T - 25)
+        if phase.lower().startswith("vap"):
+            cp0 = self.vapour_cp_ref_j_kgk or self.cp_ref_j_kgk
+            slope = self.vapour_cp_slope_j_kgk2
+        else:
+            cp0 = self.cp_ref_j_kgk
+            slope = self.cp_slope_j_kgk2
+
         return (
-            self.cp_ref_j_kgk * (t - tr)
-            + 0.5
-            * self.cp_slope_j_kgk2
-            * ((t - 25.0) ** 2 - (tr - 25.0) ** 2)
+            cp0 * (t - tr)
+            + 0.5 * slope * ((t - 25.0) ** 2 - (tr - 25.0) ** 2)
         )
 
     def liquid_density_kg_m3(self, temperature_c: float) -> float:
@@ -67,7 +87,6 @@ class ComponentData:
         return max(1.0, self.rho_ref_kg_m3 / max(0.15, denominator))
 
     def viscosity_pa_s(self, temperature_c: float) -> float:
-        # Exponential screening model.
         value = self.mu_ref_pa_s * math.exp(
             -self.mu_temp_coeff_1_k * (temperature_c - 25.0)
         )
@@ -79,9 +98,7 @@ class ComponentData:
 
     def saturation_pressure_pa(self, temperature_c: float) -> Optional[float]:
         """
-        Lee-Kesler/Pitzer corresponding-states vapour-pressure screening model.
-
-        Used only when Tc, Pc and omega are available and T < Tc.
+        Lee-Kesler/Pitzer corresponding-states saturation-pressure screening model.
         """
         if self.tc_k is None or self.pc_pa is None or self.acentric_factor is None:
             return None
@@ -91,9 +108,6 @@ class ComponentData:
             return None
 
         tr = t_k / self.tc_k
-        if tr <= 0:
-            return None
-
         f0 = (
             5.92714
             - 6.09648 / tr
@@ -109,6 +123,33 @@ class ComponentData:
 
         ln_pr = f0 + self.acentric_factor * f1
         return self.pc_pa * math.exp(ln_pr)
+
+    def latent_heat_j_kg(self, saturation_temperature_c: float) -> Optional[float]:
+        """
+        Watson correlation referenced to latent heat at the normal boiling point.
+
+        h_fg(T2) = h_fg(T1) * [(1-Tr2)/(1-Tr1)]^0.38
+        """
+        if (
+            self.tc_k is None
+            or self.normal_boiling_point_c is None
+            or self.latent_heat_nbp_j_kg is None
+        ):
+            return None
+
+        t1 = self.normal_boiling_point_c + 273.15
+        t2 = saturation_temperature_c + 273.15
+
+        if t2 >= self.tc_k:
+            return 0.0
+
+        tr1 = t1 / self.tc_k
+        tr2 = t2 / self.tc_k
+
+        numerator = max(1e-12, 1.0 - tr2)
+        denominator = max(1e-12, 1.0 - tr1)
+
+        return self.latent_heat_nbp_j_kg * (numerator / denominator) ** 0.38
 
 
 COMPONENTS: dict[str, ComponentData] = {
@@ -126,6 +167,10 @@ COMPONENTS: dict[str, ComponentData] = {
         mu_temp_coeff_1_k=0.024,
         k_ref_w_mk=0.600,
         k_slope_w_mk2=-0.0008,
+        normal_boiling_point_c=100.0,
+        latent_heat_nbp_j_kg=2_257_000.0,
+        vapour_cp_ref_j_kgk=1860.0,
+        vapour_cp_slope_j_kgk2=0.9,
         uniquac_r=0.9200,
         uniquac_q=1.4000,
     ),
@@ -143,6 +188,10 @@ COMPONENTS: dict[str, ComponentData] = {
         mu_temp_coeff_1_k=0.021,
         k_ref_w_mk=0.171,
         k_slope_w_mk2=-0.00020,
+        normal_boiling_point_c=78.37,
+        latent_heat_nbp_j_kg=841_000.0,
+        vapour_cp_ref_j_kgk=1450.0,
+        vapour_cp_slope_j_kgk2=2.0,
         uniquac_r=2.1055,
         uniquac_q=1.9720,
     ),
@@ -160,6 +209,10 @@ COMPONENTS: dict[str, ComponentData] = {
         mu_temp_coeff_1_k=0.025,
         k_ref_w_mk=0.155,
         k_slope_w_mk2=-0.00016,
+        normal_boiling_point_c=117.7,
+        latent_heat_nbp_j_kg=582_000.0,
+        vapour_cp_ref_j_kgk=1700.0,
+        vapour_cp_slope_j_kgk2=2.5,
         uniquac_r=3.4543,
         uniquac_q=3.0520,
     ),
@@ -177,6 +230,10 @@ COMPONENTS: dict[str, ComponentData] = {
         mu_temp_coeff_1_k=0.018,
         k_ref_w_mk=0.160,
         k_slope_w_mk2=-0.00018,
+        normal_boiling_point_c=56.05,
+        latent_heat_nbp_j_kg=518_000.0,
+        vapour_cp_ref_j_kgk=1350.0,
+        vapour_cp_slope_j_kgk2=1.5,
         uniquac_r=2.5735,
         uniquac_q=2.3360,
     ),
