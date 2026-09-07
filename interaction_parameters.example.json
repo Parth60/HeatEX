@@ -1,0 +1,21 @@
+{
+  "_note": "Template only. Replace example zeros with validated parameters from an appropriate thermodynamic data source. Do not assume zeros represent the real system.",
+  "KIJ": {
+    "Ethanol": {
+      "Water": 0.0
+    }
+  },
+  "NRTL": {
+    "Ethanol|Water": {
+      "tau_ij": 0.0,
+      "tau_ji": 0.0,
+      "alpha": 0.3
+    }
+  },
+  "UNIQUAC": {
+    "Ethanol|Water": {
+      "u_ij_j_mol": 0.0,
+      "u_ji_j_mol": 0.0
+    }
+  }
+}
