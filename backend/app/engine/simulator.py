@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -6,7 +7,11 @@ from .geometry import ShellTubeGeometry
 from .tube_side import calculate_tube_side
 from .bell_delaware import calculate_bell_delaware, BellDelawareInputs
 from .heat_transfer import lmtd, overall_u_outside_basis, required_area_m2
-from .thermo_provider import get_properties
+
+from backend.app.thermo.engine import (
+    evaluate_state,
+    solve_temperature_for_enthalpy,
+)
 
 
 @dataclass
@@ -15,6 +20,8 @@ class StreamInput:
     mass_flow_kg_s: float
     inlet_temperature_c: float
     pressure_bar: float
+    composition: dict[str, float] | None = None
+    composition_basis: str = "mole"
 
 
 @dataclass
@@ -27,7 +34,7 @@ class HXSimulationInput:
     shell_type: str = "E"
     rear_head: str = "M"
 
-    thermo_package: str = "Fallback database"
+    thermo_package: str = "Ideal mixture"
     flow_arrangement: str = "Counter-current"
 
     hot_outlet_target_c: float = 70.0
@@ -40,6 +47,8 @@ class HXSimulationInput:
     allowable_shell_dp_kpa: float = 50.0
 
     bell_clearances: Optional[BellDelawareInputs] = None
+
+    interaction_parameters: dict | None = None
 
 
 @dataclass
@@ -82,6 +91,12 @@ class HXSimulationResult:
     hot_property_source: str
     cold_property_source: str
 
+    hot_in_thermo: dict
+    hot_out_thermo: dict
+    cold_in_thermo: dict
+    cold_out_thermo: dict
+
+    phase_change_flag: bool
     warnings: list[str]
 
     def as_dict(self) -> dict:
@@ -99,6 +114,18 @@ SHELL_F_CORRECTION = {
 }
 
 
+def _state(stream: StreamInput, temperature_c: float, inp: HXSimulationInput):
+    return evaluate_state(
+        fluid=stream.fluid,
+        temperature_c=temperature_c,
+        pressure_bar=stream.pressure_bar,
+        package=inp.thermo_package,
+        composition=stream.composition,
+        composition_basis=stream.composition_basis,
+        interaction_parameters=inp.interaction_parameters,
+    )
+
+
 def simulate_shell_and_tube(inp: HXSimulationInput) -> HXSimulationResult:
     g = inp.geometry
     g.validate()
@@ -109,74 +136,83 @@ def simulate_shell_and_tube(inp: HXSimulationInput) -> HXSimulationResult:
     if inp.hot_outlet_target_c >= inp.hot.inlet_temperature_c:
         raise ValueError("Hot outlet target must be below hot inlet temperature.")
 
-    hot_mean = 0.5 * (inp.hot.inlet_temperature_c + inp.hot_outlet_target_c)
-    cold_guess = inp.cold.inlet_temperature_c + 20.0
-    cold_mean = 0.5 * (inp.cold.inlet_temperature_c + cold_guess)
+    # -------------------------------------------------------------
+    # Enthalpy-based energy balance
+    # -------------------------------------------------------------
+    hot_in = _state(inp.hot, inp.hot.inlet_temperature_c, inp)
+    hot_out = _state(inp.hot, inp.hot_outlet_target_c, inp)
 
-    hot_p = get_properties(
-        inp.hot.fluid,
-        hot_mean,
-        inp.hot.pressure_bar,
-        inp.thermo_package,
-    )
-    cold_p = get_properties(
-        inp.cold.fluid,
-        cold_mean,
-        inp.cold.pressure_bar,
-        inp.thermo_package,
+    specific_hot_drop = (
+        hot_in.specific_enthalpy_j_kg
+        - hot_out.specific_enthalpy_j_kg
     )
 
-    duty_w = (
-        inp.hot.mass_flow_kg_s
-        * hot_p.cp_j_kgk
-        * (inp.hot.inlet_temperature_c - inp.hot_outlet_target_c)
+    if specific_hot_drop <= 0:
+        raise ValueError(
+            "Hot-stream enthalpy did not decrease across the specified temperature interval."
+        )
+
+    duty_w = inp.hot.mass_flow_kg_s * specific_hot_drop
+
+    cold_in = _state(inp.cold, inp.cold.inlet_temperature_c, inp)
+    target_cold_h = (
+        cold_in.specific_enthalpy_j_kg
+        + duty_w / inp.cold.mass_flow_kg_s
     )
 
-    cold_out = (
+    cold_out_temperature = solve_temperature_for_enthalpy(
+        target_h_j_kg=target_cold_h,
+        fluid=inp.cold.fluid,
+        pressure_bar=inp.cold.pressure_bar,
+        package=inp.thermo_package,
+        composition=inp.cold.composition,
+        composition_basis=inp.cold.composition_basis,
+        interaction_parameters=inp.interaction_parameters,
+    )
+
+    cold_out = _state(inp.cold, cold_out_temperature, inp)
+
+    # -------------------------------------------------------------
+    # Mean states for single-phase transport correlations
+    # -------------------------------------------------------------
+    hot_mean_temperature = 0.5 * (
+        inp.hot.inlet_temperature_c
+        + inp.hot_outlet_target_c
+    )
+    cold_mean_temperature = 0.5 * (
         inp.cold.inlet_temperature_c
-        + duty_w / (inp.cold.mass_flow_kg_s * cold_p.cp_j_kgk)
+        + cold_out_temperature
     )
 
-    # Re-evaluate the cold properties at the final mean temperature.
-    cold_mean_final = 0.5 * (inp.cold.inlet_temperature_c + cold_out)
-    cold_p = get_properties(
-        inp.cold.fluid,
-        cold_mean_final,
-        inp.cold.pressure_bar,
-        inp.thermo_package,
-    )
-
-    # Recalculate the outlet once using the updated Cp.
-    cold_out = (
-        inp.cold.inlet_temperature_c
-        + duty_w / (inp.cold.mass_flow_kg_s * cold_p.cp_j_kgk)
-    )
+    hot_mean = _state(inp.hot, hot_mean_temperature, inp)
+    cold_mean = _state(inp.cold, cold_mean_temperature, inp)
 
     tube = calculate_tube_side(
         mass_flow_kg_s=inp.hot.mass_flow_kg_s,
-        rho_kg_m3=hot_p.rho_kg_m3,
-        mu_pa_s=hot_p.mu_pa_s,
-        cp_j_kgk=hot_p.cp_j_kgk,
-        k_w_mk=hot_p.k_w_mk,
+        rho_kg_m3=hot_mean.density_kg_m3,
+        mu_pa_s=hot_mean.viscosity_pa_s,
+        cp_j_kgk=hot_mean.cp_j_kgk,
+        k_w_mk=hot_mean.thermal_conductivity_w_mk,
         geometry=g,
     )
 
     shell = calculate_bell_delaware(
         mass_flow_kg_s=inp.cold.mass_flow_kg_s,
-        rho_kg_m3=cold_p.rho_kg_m3,
-        mu_pa_s=cold_p.mu_pa_s,
-        cp_j_kgk=cold_p.cp_j_kgk,
-        k_w_mk=cold_p.k_w_mk,
+        rho_kg_m3=cold_mean.density_kg_m3,
+        mu_pa_s=cold_mean.viscosity_pa_s,
+        cp_j_kgk=cold_mean.cp_j_kgk,
+        k_w_mk=cold_mean.thermal_conductivity_w_mk,
         geometry=g,
         clearances=inp.bell_clearances,
     )
 
     counter = inp.flow_arrangement.lower().startswith("counter")
+
     lmtd_value = lmtd(
         hot_in_c=inp.hot.inlet_temperature_c,
         hot_out_c=inp.hot_outlet_target_c,
         cold_in_c=inp.cold.inlet_temperature_c,
-        cold_out_c=cold_out,
+        cold_out_c=cold_out_temperature,
         counter_current=counter,
     )
 
@@ -204,6 +240,33 @@ def simulate_shell_and_tube(inp: HXSimulationInput) -> HXSimulationResult:
 
     warnings: list[str] = []
 
+    for state_name, state in (
+        ("hot inlet", hot_in),
+        ("hot outlet", hot_out),
+        ("cold inlet", cold_in),
+        ("cold outlet", cold_out),
+    ):
+        for warning in state.warnings:
+            tagged = f"{state_name}: {warning}"
+            if tagged not in warnings:
+                warnings.append(tagged)
+
+    phase_change_flag = (
+        hot_in.phase != hot_out.phase
+        or cold_in.phase != cold_out.phase
+        or "Two-phase" in hot_in.phase
+        or "Two-phase" in hot_out.phase
+        or "Two-phase" in cold_in.phase
+        or "Two-phase" in cold_out.phase
+    )
+
+    if phase_change_flag:
+        warnings.append(
+            "Phase-boundary change detected. v0.5 uses enthalpy-based sensible "
+            "stream calculations but does not yet apply rigorous latent-heat/two-phase "
+            "heat-transfer correlations. Treat this case as diagnostic only."
+        )
+
     if tube.pressure_drop_kpa > inp.allowable_tube_dp_kpa:
         warnings.append(
             f"Tube-side ΔP {tube.pressure_drop_kpa:.1f} kPa exceeds "
@@ -226,16 +289,16 @@ def simulate_shell_and_tube(inp: HXSimulationInput) -> HXSimulationResult:
     elif tube.velocity_m_s > 3.0:
         warnings.append("Tube-side velocity is high; review erosion and pressure drop.")
 
-    if cold_out >= inp.hot_outlet_target_c and counter is False:
-        warnings.append("Co-current terminal temperatures are approaching a temperature cross.")
-
     warnings.extend(shell.notes)
+
+    # De-duplicate while preserving order.
+    warnings = list(dict.fromkeys(warnings))
 
     return HXSimulationResult(
         tema_code=f"{inp.front_head}{inp.shell_type}{inp.rear_head}",
         duty_kw=duty_w / 1000.0,
         hot_outlet_c=inp.hot_outlet_target_c,
-        cold_outlet_c=cold_out,
+        cold_outlet_c=cold_out_temperature,
         lmtd_c=lmtd_value,
         correction_factor=correction,
         effective_delta_t_c=lmtd_value * correction,
@@ -259,7 +322,12 @@ def simulate_shell_and_tube(inp: HXSimulationInput) -> HXSimulationResult:
         j_b=shell.j_b,
         j_r=shell.j_r,
         j_s=shell.j_s,
-        hot_property_source=hot_p.source,
-        cold_property_source=cold_p.source,
+        hot_property_source=hot_mean.property_source,
+        cold_property_source=cold_mean.property_source,
+        hot_in_thermo=hot_in.as_dict(),
+        hot_out_thermo=hot_out.as_dict(),
+        cold_in_thermo=cold_in.as_dict(),
+        cold_out_thermo=cold_out.as_dict(),
+        phase_change_flag=phase_change_flag,
         warnings=warnings,
     )
